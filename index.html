@@ -339,6 +339,14 @@
             box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
         }
 
+        .btn-refresh {
+            background: linear-gradient(135deg, #00b894, #00a085);
+        }
+
+        .btn-refresh:hover {
+            box-shadow: 0 4px 15px rgba(0, 184, 148, 0.3);
+        }
+
         .attendance-table {
             background: white;
             border-radius: 12px;
@@ -795,6 +803,9 @@
                 <button class="btn btn-admin" onclick="showEmployeePage()">
                     <i class="fas fa-user"></i> Mode Karyawan
                 </button>
+                <button class="btn btn-admin btn-refresh" onclick="refreshAdminData()">
+                    <i class="fas fa-sync-alt"></i> Refresh Data
+                </button>
                 <button class="btn btn-admin" onclick="exportToExcel()">
                     <i class="fas fa-download"></i> Export Excel
                 </button>
@@ -834,14 +845,14 @@
 
         // Firebase configuration
         const firebaseConfig = {
-  apiKey: "AIzaSyCRrIOJWi43lhovFD4vJBk4uRZbOSpSCRY",
-  authDomain: "sistemabsensichery.firebaseapp.com",
-  databaseURL: "https://sistemabsensichery-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "sistemabsensichery",
-  storageBucket: "sistemabsensichery.firebasestorage.app",
-  messagingSenderId: "281448051879",
-  appId: "1:281448051879:web:41e0c47c65f4334ec09782",
-  measurementId: "G-6QKC0VVP5Y"
+            apiKey: "AIzaSyCRrIOJWi43lhovFD4vJBk4uRZbOSpSCRY",
+            authDomain: "sistemabsensichery.firebaseapp.com",
+            databaseURL: "https://sistemabsensichery-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "sistemabsensichery",
+            storageBucket: "sistemabsensichery.firebasestorage.app",
+            messagingSenderId: "281448051879",
+            appId: "1:281448051879:web:41e0c47c65f4334ec09782",
+            measurementId: "G-6QKC0VVP5Y"
         };
 
         // Initialize Firebase
@@ -866,6 +877,7 @@
     <script>
         // Global variables
         const ADMIN_PASSWORD = 'adminchery';
+        const SESSION_KEY = 'cheryArtaAdminSession';
         let currentUser = 'employee';
         let attendanceData = [];
         
@@ -879,6 +891,9 @@
         
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
+            // Check for existing admin session
+            checkAdminSession();
+            
             updateDateTime();
             setInterval(updateDateTime, 1000);
             
@@ -900,6 +915,39 @@
                 lastTouchEnd = now;
             }, false);
         });
+
+        // Check for existing admin session
+        function checkAdminSession() {
+            const sessionData = sessionStorage.getItem(SESSION_KEY);
+            if (sessionData) {
+                try {
+                    const session = JSON.parse(sessionData);
+                    if (session.isAdmin && session.loginTime) {
+                        // Session exists, auto-login as admin
+                        currentUser = 'admin';
+                        showMainApp();
+                        showAdminPage();
+                    }
+                } catch (e) {
+                    console.error('Error parsing session data:', e);
+                    sessionStorage.removeItem(SESSION_KEY);
+                }
+            }
+        }
+
+        // Save admin session
+        function saveAdminSession() {
+            const sessionData = {
+                isAdmin: true,
+                loginTime: new Date().toISOString()
+            };
+            sessionStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+        }
+
+        // Clear admin session
+        function clearAdminSession() {
+            sessionStorage.removeItem(SESSION_KEY);
+        }
 
         // Initialize Firebase real-time listeners
         function initializeFirebaseListeners() {
@@ -1188,6 +1236,7 @@
             
             if (password === ADMIN_PASSWORD) {
                 currentUser = 'admin';
+                saveAdminSession(); // Save session
                 showMainApp();
                 showAdminPage();
             } else {
@@ -1233,12 +1282,55 @@
             loadAttendanceTable();
         }
 
+        // Refresh admin data
+        function refreshAdminData() {
+            updateSyncStatus('syncing');
+            
+            // Show loading message
+            const tbody = document.getElementById('attendanceTableBody');
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center"><i class="fas fa-spinner fa-spin"></i> Memuat ulang data...</td></tr>';
+            
+            // Reload the table after a short delay to show the loading state
+            setTimeout(() => {
+                loadAttendanceTable();
+                updateSyncStatus('connected');
+                
+                // Show success notification
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: linear-gradient(135deg, #00b894, #00a085);
+                    color: white;
+                    padding: 15px 25px;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+                    z-index: 10000;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                `;
+                notification.innerHTML = '<i class="fas fa-check-circle"></i> Data berhasil diperbarui!';
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.style.transition = 'opacity 0.3s ease';
+                    notification.style.opacity = '0';
+                    setTimeout(() => notification.remove(), 300);
+                }, 2000);
+            }, 500);
+        }
+
         // Logout function
         function logout() {
             if (watchId) {
                 navigator.geolocation.clearWatch(watchId);
                 watchId = null;
             }
+            
+            clearAdminSession(); // Clear session
             
             document.getElementById('loginPage').classList.remove('hidden');
             document.getElementById('mainApp').classList.add('hidden');
