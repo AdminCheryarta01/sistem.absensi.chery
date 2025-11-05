@@ -2,15 +2,13 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sistem Absensi Karyawan - Chery Arta</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- Leaflet JavaScript -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         :root {
@@ -28,6 +26,7 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
@@ -35,10 +34,11 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             color: var(--dark-color);
+            overflow-x: hidden;
         }
 
         .container-fluid {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -70,6 +70,7 @@
             justify-content: center;
             color: white;
             font-size: 24px;
+            flex-shrink: 0;
         }
 
         .company-name {
@@ -84,10 +85,11 @@
             color: white;
             padding: 15px 20px;
             border-radius: 12px;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
             text-align: center;
             margin-bottom: 20px;
+            word-wrap: break-word;
         }
 
         .main-card {
@@ -111,11 +113,12 @@
         .map-container {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 12px;
-            height: 350px;
+            height: 400px;
             margin-bottom: 15px;
             border: 2px solid rgba(255, 255, 255, 0.2);
             position: relative;
             overflow: hidden;
+            touch-action: pan-x pan-y;
         }
 
         #mapView {
@@ -137,6 +140,8 @@
             align-items: center;
             gap: 10px;
             z-index: 1000;
+            max-width: 90%;
+            text-align: center;
         }
 
         .loading-spinner {
@@ -146,6 +151,7 @@
             border-top: 2px solid white;
             border-radius: 50%;
             animation: spin 1s linear infinite;
+            flex-shrink: 0;
         }
 
         @keyframes spin {
@@ -168,6 +174,15 @@
             background: #00b894;
             border-radius: 50%;
             animation: pulse 2s infinite;
+            flex-shrink: 0;
+        }
+
+        .status-indicator.syncing {
+            background: #fdcb6e;
+        }
+
+        .status-indicator.offline {
+            background: #e17055;
         }
 
         @keyframes pulse {
@@ -178,7 +193,7 @@
 
         .location-info {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 12px;
             margin-top: 10px;
         }
@@ -189,13 +204,22 @@
             border-radius: 8px;
             font-size: 14px;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 8px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .location-item i {
             width: 16px;
             text-align: center;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .location-item span {
+            flex: 1;
+            min-width: 0;
         }
 
         .form-section {
@@ -215,11 +239,13 @@
             padding: 12px 16px;
             font-size: 16px;
             transition: all 0.3s ease;
+            width: 100%;
         }
 
         .form-control:focus, .form-select:focus {
             border-color: var(--primary-color);
             box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25);
+            outline: none;
         }
 
         .attendance-buttons {
@@ -238,6 +264,8 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            cursor: pointer;
+            touch-action: manipulation;
         }
 
         .btn-checkin {
@@ -250,9 +278,13 @@
             color: white;
         }
 
-        .btn-attendance:hover {
+        .btn-attendance:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-attendance:active:not(:disabled) {
+            transform: translateY(0);
         }
 
         .btn-attendance:disabled {
@@ -298,6 +330,8 @@
             border-radius: 8px;
             font-weight: 600;
             transition: all 0.3s ease;
+            cursor: pointer;
+            touch-action: manipulation;
         }
 
         .btn-admin:hover {
@@ -314,6 +348,7 @@
 
         .table {
             margin: 0;
+            font-size: 14px;
         }
 
         .table th {
@@ -321,12 +356,14 @@
             color: white;
             font-weight: 600;
             border: none;
-            padding: 15px;
+            padding: 15px 10px;
+            white-space: nowrap;
         }
 
         .table td {
-            padding: 12px 15px;
+            padding: 12px 10px;
             border-color: #f1f5f9;
+            vertical-align: middle;
         }
 
         .badge {
@@ -334,6 +371,7 @@
             border-radius: 20px;
             font-size: 12px;
             font-weight: 600;
+            white-space: nowrap;
         }
 
         .hidden {
@@ -349,7 +387,7 @@
 
         .current-status {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
         }
@@ -365,15 +403,16 @@
             color: var(--dark-color);
             margin-bottom: 5px;
             font-weight: 600;
+            font-size: 14px;
         }
 
         .status-item p {
             margin: 0;
-            font-size: 14px;
+            font-size: 13px;
             color: #666;
+            word-wrap: break-word;
         }
 
-        /* Custom map controls */
         .map-controls {
             position: absolute;
             top: 10px;
@@ -397,6 +436,8 @@
             font-size: 14px;
             transition: all 0.3s ease;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            touch-action: manipulation;
         }
 
         .map-control-btn:hover {
@@ -404,35 +445,50 @@
             transform: translateY(-1px);
         }
 
-        .accuracy-indicator {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+        .map-control-btn:active {
+            transform: translateY(0);
         }
 
-        .accuracy-good { color: #00b894; }
-        .accuracy-medium { color: #fdcb6e; }
-        .accuracy-poor { color: #e17055; }
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
 
+        .sync-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            font-size: 13px;
+        }
+
+        .sync-icon {
+            animation: rotate 2s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Mobile Optimizations */
         @media (max-width: 768px) {
             .container-fluid {
                 padding: 10px;
             }
 
             .header-card, .main-card {
-                padding: 20px;
+                padding: 20px 15px;
             }
 
             .company-name {
-                font-size: 24px;
+                font-size: 22px;
             }
 
             .datetime-display {
-                font-size: 16px;
+                font-size: 14px;
                 padding: 12px 15px;
             }
 
@@ -440,16 +496,24 @@
                 grid-template-columns: 1fr;
             }
 
+            .btn-attendance {
+                font-size: 16px;
+                padding: 14px 18px;
+            }
+
             .admin-controls {
                 flex-direction: column;
             }
 
-            .table-responsive {
-                font-size: 14px;
+            .btn-admin {
+                width: 100%;
+                justify-content: center;
+                display: flex;
+                align-items: center;
             }
 
             .map-container {
-                height: 280px;
+                height: 300px;
             }
 
             .location-info {
@@ -461,6 +525,110 @@
                 font-size: 13px;
                 padding: 10px 12px;
             }
+
+            .login-card {
+                padding: 30px 20px;
+            }
+
+            .current-status {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .status-item {
+                padding: 12px 10px;
+            }
+
+            .table {
+                font-size: 12px;
+            }
+
+            .table th, .table td {
+                padding: 8px 6px;
+            }
+
+            .badge {
+                font-size: 10px;
+                padding: 4px 8px;
+            }
+        }
+
+        /* Small phones */
+        @media (max-width: 480px) {
+            .company-name {
+                font-size: 20px;
+            }
+
+            .datetime-display {
+                font-size: 13px;
+            }
+
+            .map-container {
+                height: 250px;
+            }
+
+            .btn-attendance {
+                font-size: 15px;
+                padding: 12px 16px;
+            }
+
+            .main-card {
+                padding: 15px 10px;
+            }
+
+            .map-section {
+                padding: 15px;
+            }
+
+            .current-status {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Tablet landscape */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .container-fluid {
+                max-width: 95%;
+            }
+
+            .location-info {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .current-status {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Large screens */
+        @media (min-width: 1400px) {
+            .container-fluid {
+                max-width: 1600px;
+            }
+
+            .map-container {
+                height: 450px;
+            }
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                background: white;
+            }
+
+            .header-card, .main-card {
+                box-shadow: none;
+            }
+
+            .btn-attendance, .admin-controls, .map-controls {
+                display: none;
+            }
+        }
+
+        /* Prevent zoom on double tap for iOS */
+        button, input, select, textarea {
+            touch-action: manipulation;
         }
     </style>
 </head>
@@ -498,8 +666,14 @@
                 <h1 class="company-name">Chery Arta</h1>
             </div>
             <div class="datetime-display" id="dateTimeDisplay"></div>
-            <div class="d-flex justify-content-between align-items-center">
-                <span id="userTypeDisplay" class="badge bg-primary">Karyawan</span>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span id="userTypeDisplay" class="badge bg-primary">Karyawan</span>
+                    <span class="sync-status" id="syncStatus">
+                        <i class="fas fa-cloud" id="syncIcon"></i>
+                        <span id="syncText">Terhubung</span>
+                    </span>
+                </div>
                 <button class="btn btn-outline-danger btn-sm" onclick="logout()">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </button>
@@ -514,7 +688,7 @@
                 <div class="map-container">
                     <div class="map-loading" id="mapLoading">
                         <div class="loading-spinner"></div>
-                        <span>Mendeteksi lokasi Anda...</span>
+                        <span>Mendeteksi lokasi...</span>
                     </div>
                     <div id="mapView"></div>
                     <div class="map-controls">
@@ -544,11 +718,11 @@
                     </div>
                     <div class="location-item">
                         <i class="fas fa-clock"></i>
-                        <span><strong>Terakhir Update:</strong> <span id="lastUpdateInfo">-</span></span>
+                        <span><strong>Update:</strong> <span id="lastUpdateInfo">-</span></span>
                     </div>
                     <div class="location-item">
                         <i class="fas fa-globe"></i>
-                        <span><strong>Alamat:</strong> <span id="addressInfo">Mencari alamat...</span></span>
+                        <span><strong>Alamat:</strong> <span id="addressInfo">Mencari...</span></span>
                     </div>
                 </div>
             </div>
@@ -637,27 +811,63 @@
                         <tr>
                             <th>Tanggal</th>
                             <th>Nama</th>
-                            <th>Jenis Kerja</th>
+                            <th>Jenis</th>
                             <th>Check In</th>
                             <th>Check Out</th>
-                            <th>Total Jam</th>
+                            <th>Total</th>
                             <th>Status</th>
                             <th>Catatan</th>
                         </tr>
                     </thead>
                     <tbody id="attendanceTableBody">
-                        <!-- Data will be populated by JavaScript -->
+                        <tr><td colspan="8" class="text-center">Memuat data...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAtrsU0uTBIFA_PYVUwch90jMr9onkNfcc",
+            authDomain: "sistem-absensi-chery.firebaseapp.com",
+            databaseURL: "https://sistem-absensi-chery-default-rtdb.firebaseio.com",
+            projectId: "sistem-absensi-chery",
+            storageBucket: "sistem-absensi-chery.firebasestorage.app",
+            messagingSenderId: "147694986361",
+            appId: "1:147694986361:web:07647d184cc34ba7b5a0a8",
+            measurementId: "G-7PB1N8G3BQ"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Make Firebase functions globally available
+        window.firebaseDB = database;
+        window.firebaseRef = ref;
+        window.firebaseSet = set;
+        window.firebasePush = push;
+        window.firebaseOnValue = onValue;
+        window.firebaseRemove = remove;
+        window.firebaseInitialized = true;
+
+        // Update sync status
+        updateSyncStatus('connected');
+
+        console.log('Firebase initialized successfully');
+    </script>
+
     <script>
         // Global variables
         const ADMIN_PASSWORD = 'adminchery';
         let currentUser = 'employee';
-        let attendanceData = JSON.parse(localStorage.getItem('attendanceData')) || [];
+        let attendanceData = [];
         
         // Map variables
         let map;
@@ -665,13 +875,85 @@
         let userLocation = null;
         let watchId = null;
         let currentMapType = 'osm';
+        let mapInitialized = false;
         
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
             updateDateTime();
             setInterval(updateDateTime, 1000);
-            loadTodayStatus();
+            
+            // Wait for Firebase to initialize
+            const checkFirebase = setInterval(() => {
+                if (window.firebaseInitialized) {
+                    clearInterval(checkFirebase);
+                    initializeFirebaseListeners();
+                }
+            }, 100);
+            
+            // Prevent double-tap zoom on iOS
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function(event) {
+                const now = Date.now();
+                if (now - lastTouchEnd <= 300) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
         });
+
+        // Initialize Firebase real-time listeners
+        function initializeFirebaseListeners() {
+            const attendanceRef = window.firebaseRef(window.firebaseDB, 'attendance');
+            
+            window.firebaseOnValue(attendanceRef, (snapshot) => {
+                attendanceData = [];
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    Object.keys(data).forEach(key => {
+                        attendanceData.push({
+                            firebaseKey: key,
+                            ...data[key]
+                        });
+                    });
+                }
+                
+                // Update UI if on employee page
+                if (!document.getElementById('employeePage').classList.contains('hidden')) {
+                    loadTodayStatus();
+                }
+                
+                // Update UI if on admin page
+                if (!document.getElementById('adminPage').classList.contains('hidden')) {
+                    loadAttendanceTable();
+                }
+                
+                updateSyncStatus('connected');
+            }, (error) => {
+                console.error('Firebase error:', error);
+                updateSyncStatus('error');
+            });
+        }
+
+        // Update sync status indicator
+        function updateSyncStatus(status) {
+            const syncIcon = document.getElementById('syncIcon');
+            const syncText = document.getElementById('syncText');
+            const statusIndicator = document.querySelector('.status-indicator');
+            
+            if (status === 'connected') {
+                syncIcon.className = 'fas fa-cloud';
+                syncText.textContent = 'Terhubung';
+                if (statusIndicator) statusIndicator.className = 'status-indicator';
+            } else if (status === 'syncing') {
+                syncIcon.className = 'fas fa-sync sync-icon';
+                syncText.textContent = 'Menyinkronkan...';
+                if (statusIndicator) statusIndicator.className = 'status-indicator syncing';
+            } else if (status === 'error') {
+                syncIcon.className = 'fas fa-exclamation-triangle';
+                syncText.textContent = 'Error';
+                if (statusIndicator) statusIndicator.className = 'status-indicator offline';
+            }
+        }
 
         // Update date and time display
         function updateDateTime() {
@@ -686,69 +968,82 @@
             const year = now.getFullYear();
             const time = now.toTimeString().split(' ')[0];
             
-            const dateTimeString = `${dayName}, ${date} ${month} ${year} pukul ${time}`;
+            const dateTimeString = `${dayName}, ${date} ${month} ${year} - ${time}`;
             document.getElementById('dateTimeDisplay').textContent = dateTimeString;
         }
 
-        // Initialize interactive map - only user location
+        // Initialize interactive map
         function initializeMap() {
-            // Show loading state
-            document.getElementById('mapLoading').style.display = 'flex';
+            if (mapInitialized) return;
             
-            // Initialize map with world view initially
-            map = L.map('mapView').setView([0, 0], 2);
+            try {
+                document.getElementById('mapLoading').style.display = 'flex';
+                
+                map = L.map('mapView', {
+                    zoomControl: true,
+                    attributionControl: true,
+                    dragging: true,
+                    touchZoom: true,
+                    scrollWheelZoom: true,
+                    doubleClickZoom: true,
+                    boxZoom: true,
+                    tap: true,
+                    tapTolerance: 15
+                }).setView([0, 0], 2);
 
-            // Add tile layer (OpenStreetMap)
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
 
-            // Get user location immediately
-            getCurrentLocation();
+                mapInitialized = true;
+                getCurrentLocation();
+            } catch (error) {
+                console.error('Map initialization error:', error);
+                document.getElementById('locationStatus').textContent = 'Error menginisialisasi peta';
+            }
         }
 
         // Get current user location
         function getCurrentLocation() {
-            if (navigator.geolocation) {
-                // Get initial position
-                navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        updateUserLocation(position);
-                        // Start watching position
-                        startLocationWatch();
-                    },
-                    function(error) {
-                        handleLocationError(error);
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    }
-                );
-            } else {
-                handleLocationError({ code: 0, message: 'Geolocation tidak didukung browser' });
+            if (!navigator.geolocation) {
+                handleLocationError({ code: 0, message: 'Geolocation tidak didukung' });
+                return;
             }
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    updateUserLocation(position);
+                    startLocationWatch();
+                },
+                function(error) {
+                    handleLocationError(error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 0
+                }
+            );
         }
 
-        // Start watching user location for real-time updates
+        // Start watching user location
         function startLocationWatch() {
-            if (navigator.geolocation) {
-                watchId = navigator.geolocation.watchPosition(
-                    function(position) {
-                        updateUserLocation(position);
-                    },
-                    function(error) {
-                        console.log('Location watch error:', error);
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 30000,
-                        maximumAge: 10000
-                    }
-                );
-            }
+            if (watchId) return;
+            
+            watchId = navigator.geolocation.watchPosition(
+                function(position) {
+                    updateUserLocation(position);
+                },
+                function(error) {
+                    console.log('Location watch error:', error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 30000,
+                    maximumAge: 10000
+                }
+            );
         }
 
         // Update user location on map
@@ -756,21 +1051,18 @@
             userLocation = [position.coords.latitude, position.coords.longitude];
             const accuracy = position.coords.accuracy;
             
-            // Create user marker with animated icon
             const userIcon = L.divIcon({
-                html: `<div style="background: linear-gradient(135deg, #00b894, #00a085); color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.3); animation: pulse 2s infinite;">
+                html: `<div style="background: linear-gradient(135deg, #00b894, #00a085); color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
                          <i class="fas fa-user" style="font-size: 16px;"></i>
                        </div>`,
                 iconSize: [40, 40],
                 className: 'custom-div-icon'
             });
 
-            // Remove existing user marker if exists
             if (userMarker) {
                 map.removeLayer(userMarker);
             }
 
-            // Add user marker
             userMarker = L.marker(userLocation, { icon: userIcon })
                 .addTo(map)
                 .bindPopup(`<div style="text-align: center; padding: 12px;">
@@ -780,16 +1072,9 @@
                              Akurasi: ${accuracy.toFixed(0)}m</small>
                            </div>`);
 
-            // Center map on user location
             map.setView(userLocation, 16);
-
-            // Update location information
             updateLocationInfo(position);
-
-            // Get address from coordinates
             getAddressFromCoordinates(userLocation[0], userLocation[1]);
-
-            // Hide loading
             document.getElementById('mapLoading').style.display = 'none';
         }
 
@@ -801,24 +1086,11 @@
             
             document.getElementById('coordinatesInfo').textContent = coords;
             document.getElementById('lastUpdateInfo').textContent = timestamp.toLocaleTimeString('id-ID');
-            
-            // Update accuracy with color coding
-            const accuracyElement = document.getElementById('accuracyInfo');
-            accuracyElement.textContent = `±${accuracy.toFixed(0)}m`;
-            
-            if (accuracy <= 10) {
-                accuracyElement.className = 'accuracy-good';
-            } else if (accuracy <= 50) {
-                accuracyElement.className = 'accuracy-medium';
-            } else {
-                accuracyElement.className = 'accuracy-poor';
-            }
-            
-            // Update status
-            document.getElementById('locationStatus').textContent = 'Lokasi terdeteksi dengan baik';
+            document.getElementById('accuracyInfo').textContent = `±${accuracy.toFixed(0)}m`;
+            document.getElementById('locationStatus').textContent = 'Lokasi terdeteksi';
         }
 
-        // Get address from coordinates using reverse geocoding
+        // Get address from coordinates
         async function getAddressFromCoordinates(lat, lng) {
             try {
                 const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
@@ -839,18 +1111,17 @@
         function handleLocationError(error) {
             let errorMsg = '';
             switch(error.code) {
-                case error.PERMISSION_DENIED:
-                    errorMsg = 'Akses lokasi ditolak. Silakan izinkan akses lokasi.';
+                case 1:
+                    errorMsg = 'Akses lokasi ditolak';
                     break;
-                case error.POSITION_UNAVAILABLE:
-                    errorMsg = 'Informasi lokasi tidak tersedia.';
+                case 2:
+                    errorMsg = 'Lokasi tidak tersedia';
                     break;
-                case error.TIMEOUT:
-                    errorMsg = 'Timeout dalam mendapatkan lokasi.';
+                case 3:
+                    errorMsg = 'Timeout mendapatkan lokasi';
                     break;
                 default:
-                    errorMsg = 'Error dalam mendapatkan lokasi.';
-                    break;
+                    errorMsg = 'Error mendapatkan lokasi';
             }
             
             document.getElementById('locationStatus').textContent = errorMsg;
@@ -872,36 +1143,33 @@
             document.getElementById('mapLoading').style.display = 'flex';
             document.getElementById('locationStatus').textContent = 'Memperbarui lokasi...';
             
-            // Stop current watch
             if (watchId) {
                 navigator.geolocation.clearWatch(watchId);
+                watchId = null;
             }
             
-            // Get fresh location
             getCurrentLocation();
         }
 
         function toggleMapType() {
             if (!map) return;
             
-            // Remove current layers
             map.eachLayer(function(layer) {
                 if (layer instanceof L.TileLayer) {
                     map.removeLayer(layer);
                 }
             });
             
-            // Add new layer based on current type
             if (currentMapType === 'osm') {
                 L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
                     maxZoom: 19,
-                    attribution: '© OpenStreetMap contributors, Tiles style by HOT'
+                    attribution: '© OpenStreetMap contributors'
                 }).addTo(map);
                 currentMapType = 'hot';
             } else if (currentMapType === 'hot') {
                 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                     maxZoom: 19,
-                    attribution: '© Esri, USGS, NOAA'
+                    attribution: '© Esri'
                 }).addTo(map);
                 currentMapType = 'satellite';
             } else {
@@ -949,10 +1217,11 @@
             userDisplay.textContent = 'Karyawan';
             userDisplay.className = 'badge bg-primary';
             
-            // Initialize map when showing employee page
             setTimeout(() => {
-                if (!map) {
+                if (!mapInitialized) {
                     initializeMap();
+                } else if (map) {
+                    map.invalidateSize();
                 }
             }, 100);
         }
@@ -966,7 +1235,6 @@
 
         // Logout function
         function logout() {
-            // Stop location watch
             if (watchId) {
                 navigator.geolocation.clearWatch(watchId);
                 watchId = null;
@@ -978,7 +1246,7 @@
             currentUser = 'employee';
         }
 
-        // Load today's status for employee
+        // Load today's status
         function loadTodayStatus() {
             const today = new Date().toDateString();
             const todayAttendance = attendanceData.find(record => 
@@ -1002,7 +1270,7 @@
                     const workingHours = Math.floor(workingMs / (1000 * 60 * 60));
                     const workingMinutes = Math.floor((workingMs % (1000 * 60 * 60)) / (1000 * 60));
                     document.getElementById('workingHours').textContent = 
-                        `${workingHours} jam ${workingMinutes} menit`;
+                        `${workingHours}j ${workingMinutes}m`;
                     
                     checkinBtn.disabled = false;
                     checkoutBtn.disabled = true;
@@ -1025,7 +1293,7 @@
         }
 
         // Check In function
-        function checkIn() {
+        async function checkIn() {
             const employeeName = document.getElementById('employeeName').value.trim();
             const workType = document.getElementById('workType').value;
             const notes = document.getElementById('notes').value.trim();
@@ -1043,7 +1311,6 @@
             const now = new Date();
             const today = now.toDateString();
             
-            // Check if already checked in today
             const existingRecord = attendanceData.find(record => 
                 new Date(record.date).toDateString() === today && record.name === employeeName
             );
@@ -1053,27 +1320,33 @@
                 return;
             }
 
-            // Create new attendance record
+            updateSyncStatus('syncing');
+
             const attendanceRecord = {
-                id: Date.now(),
                 date: now.toISOString(),
                 name: employeeName,
                 workType: workType,
                 checkIn: now.toISOString(),
                 checkOut: null,
                 notes: notes,
-                location: userLocation ? `${userLocation[0].toFixed(6)}, ${userLocation[1].toFixed(6)}` : 'Location not available'
+                location: userLocation ? `${userLocation[0].toFixed(6)}, ${userLocation[1].toFixed(6)}` : 'Tidak tersedia'
             };
 
-            attendanceData.push(attendanceRecord);
-            localStorage.setItem('attendanceData', JSON.stringify(attendanceData));
-
-            showStatusMessage(`Check In berhasil pada ${now.toLocaleTimeString('id-ID')}`, 'success');
-            loadTodayStatus();
+            try {
+                const attendanceRef = window.firebaseRef(window.firebaseDB, 'attendance');
+                const newAttendanceRef = window.firebasePush(attendanceRef);
+                await window.firebaseSet(newAttendanceRef, attendanceRecord);
+                
+                showStatusMessage(`Check In berhasil pada ${now.toLocaleTimeString('id-ID')}`, 'success');
+            } catch (error) {
+                console.error('Error saving to Firebase:', error);
+                alert('Gagal menyimpan data. Silakan coba lagi.');
+                updateSyncStatus('error');
+            }
         }
 
         // Check Out function
-        function checkOut() {
+        async function checkOut() {
             const employeeName = document.getElementById('employeeName').value.trim();
             
             if (!employeeName) {
@@ -1082,26 +1355,36 @@
             }
 
             const today = new Date().toDateString();
-            const recordIndex = attendanceData.findIndex(record => 
-                new Date(record.date).toDateString() === today && 
-                record.name === employeeName && 
-                !record.checkOut
+            const record = attendanceData.find(r => 
+                new Date(r.date).toDateString() === today && 
+                r.name === employeeName && 
+                !r.checkOut
             );
 
-            if (recordIndex === -1) {
+            if (!record) {
                 alert('Tidak ditemukan data check in untuk hari ini');
                 return;
             }
 
-            const now = new Date();
-            attendanceData[recordIndex].checkOut = now.toISOString();
-            if (userLocation) {
-                attendanceData[recordIndex].checkoutLocation = `${userLocation[0].toFixed(6)}, ${userLocation[1].toFixed(6)}`;
-            }
-            localStorage.setItem('attendanceData', JSON.stringify(attendanceData));
+            updateSyncStatus('syncing');
 
-            showStatusMessage(`Check Out berhasil pada ${now.toLocaleTimeString('id-ID')}`, 'success');
-            loadTodayStatus();
+            const now = new Date();
+            const updatedRecord = {
+                ...record,
+                checkOut: now.toISOString(),
+                checkoutLocation: userLocation ? `${userLocation[0].toFixed(6)}, ${userLocation[1].toFixed(6)}` : 'Tidak tersedia'
+            };
+
+            try {
+                const recordRef = window.firebaseRef(window.firebaseDB, `attendance/${record.firebaseKey}`);
+                await window.firebaseSet(recordRef, updatedRecord);
+                
+                showStatusMessage(`Check Out berhasil pada ${now.toLocaleTimeString('id-ID')}`, 'success');
+            } catch (error) {
+                console.error('Error updating Firebase:', error);
+                alert('Gagal menyimpan data. Silakan coba lagi.');
+                updateSyncStatus('error');
+            }
         }
 
         // Show status message
@@ -1123,7 +1406,7 @@
             }, 5000);
         }
 
-        // Load attendance table for admin
+        // Load attendance table
         function loadAttendanceTable() {
             const tbody = document.getElementById('attendanceTableBody');
             tbody.innerHTML = '';
@@ -1133,15 +1416,14 @@
                 return;
             }
 
-            // Sort by date (newest first)
             const sortedData = [...attendanceData].sort((a, b) => new Date(b.date) - new Date(a.date));
 
             sortedData.forEach(record => {
                 const row = document.createElement('tr');
                 
-                const checkInTime = new Date(record.checkIn).toLocaleTimeString('id-ID');
-                const checkOutTime = record.checkOut ? new Date(record.checkOut).toLocaleTimeString('id-ID') : '-';
-                const date = new Date(record.date).toLocaleDateString('id-ID');
+                const checkInTime = new Date(record.checkIn).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'});
+                const checkOutTime = record.checkOut ? new Date(record.checkOut).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'}) : '-';
+                const date = new Date(record.date).toLocaleDateString('id-ID', {day: '2-digit', month: 'short'});
                 
                 let totalHours = '-';
                 let status = 'Check In';
@@ -1178,7 +1460,6 @@
                 return;
             }
 
-            // Prepare data for Excel
             const excelData = attendanceData.map(record => {
                 const checkInTime = new Date(record.checkIn).toLocaleString('id-ID');
                 const checkOutTime = record.checkOut ? new Date(record.checkOut).toLocaleString('id-ID') : '-';
@@ -1200,31 +1481,39 @@
                     'Check Out': checkOutTime,
                     'Total Jam Kerja': totalHours,
                     'Status': record.checkOut ? 'Selesai' : 'Check In',
-                    'Lokasi': record.location || 'Tidak tersedia',
+                    'Lokasi Check In': record.location || 'Tidak tersedia',
+                    'Lokasi Check Out': record.checkoutLocation || '-',
                     'Catatan': record.notes || '-'
                 };
             });
 
-            // Create workbook and worksheet
             const ws = XLSX.utils.json_to_sheet(excelData);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Data Absensi");
 
-            // Generate filename with current date
             const now = new Date();
             const filename = `Data_Absensi_CheryArta_${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}.xlsx`;
 
-            // Save file
             XLSX.writeFile(wb, filename);
         }
 
         // Clear all data
-        function clearAllData() {
-            if (confirm('Apakah Anda yakin ingin menghapus semua data absensi? Tindakan ini tidak dapat dibatalkan.')) {
-                attendanceData = [];
-                localStorage.removeItem('attendanceData');
-                loadAttendanceTable();
+        async function clearAllData() {
+            if (!confirm('Apakah Anda yakin ingin menghapus semua data absensi? Tindakan ini tidak dapat dibatalkan.')) {
+                return;
+            }
+
+            updateSyncStatus('syncing');
+
+            try {
+                const attendanceRef = window.firebaseRef(window.firebaseDB, 'attendance');
+                await window.firebaseRemove(attendanceRef);
                 alert('Semua data absensi telah dihapus');
+                updateSyncStatus('connected');
+            } catch (error) {
+                console.error('Error deleting data:', error);
+                alert('Gagal menghapus data. Silakan coba lagi.');
+                updateSyncStatus('error');
             }
         }
     </script>
