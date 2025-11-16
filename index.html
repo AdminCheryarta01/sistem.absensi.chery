@@ -1210,18 +1210,30 @@
                 map.removeLayer(userMarker);
             }
 
-            userMarker = L.marker(userLocation, { icon: userIcon })
-                .addTo(map)
-                .bindPopup(`<div style="text-align: center; padding: 12px;">
-                             <strong>📍 Lokasi Anda</strong><br>
-                             <small>Lat: ${userLocation[0].toFixed(6)}<br>
-                             Lng: ${userLocation[1].toFixed(6)}<br>
-                             Akurasi: ${accuracy.toFixed(0)}m</small>
-                           </div>`);
+            // Get address first, then create marker with location name
+            getAddressFromCoordinates(userLocation[0], userLocation[1]).then(() => {
+                const locationName = window.currentLocationName || 'Lokasi Anda';
+                const locationAddress = window.currentFullAddress || `${userLocation[0].toFixed(6)}, ${userLocation[1].toFixed(6)}`;
+                
+                userMarker = L.marker(userLocation, { icon: userIcon })
+                    .addTo(map)
+                    .bindPopup(`<div style="text-align: center; padding: 12px; min-width: 200px;">
+                                 <strong style="font-size: 14px; color: #00b894;">📍 ${locationName}</strong><br>
+                                 <small style="font-size: 11px; color: #666; line-height: 1.4;">${locationAddress}</small><br>
+                                 <hr style="margin: 8px 0; border: none; border-top: 1px solid #e5e7eb;">
+                                 <small style="font-size: 10px; color: #999;">
+                                   Lat: ${userLocation[0].toFixed(6)}<br>
+                                   Lng: ${userLocation[1].toFixed(6)}<br>
+                                   Akurasi: ±${accuracy.toFixed(0)}m
+                                 </small>
+                               </div>`, {
+                        maxWidth: 300,
+                        className: 'custom-popup'
+                    });
+            });
 
             map.setView(userLocation, 16);
             updateLocationInfo(position);
-            getAddressFromCoordinates(userLocation[0], userLocation[1]);
             document.getElementById('mapLoading').style.display = 'none';
         }
 
@@ -1280,10 +1292,30 @@
                         fullAddress = data.display_name.split(',').slice(0, 4).join(',');
                     }
                     
-                    document.getElementById('addressInfo').textContent = fullAddress;
+                    // Update display with location name prominently
+                    const displayText = locationName ? 
+                        `📍 ${locationName} - ${fullAddress}` : 
+                        fullAddress;
+                    
+                    document.getElementById('addressInfo').innerHTML = `<strong style="color: #00b894;">${locationName || 'Lokasi'}</strong><br><small>${fullAddress}</small>`;
                     
                     window.currentLocationName = locationName || fullAddress.split(',')[0];
                     window.currentFullAddress = fullAddress;
+                    
+                    // Update marker popup if it exists
+                    if (userMarker) {
+                        const locationAddress = fullAddress || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                        userMarker.setPopupContent(`<div style="text-align: center; padding: 12px; min-width: 200px;">
+                                 <strong style="font-size: 14px; color: #00b894;">📍 ${window.currentLocationName}</strong><br>
+                                 <small style="font-size: 11px; color: #666; line-height: 1.4;">${locationAddress}</small><br>
+                                 <hr style="margin: 8px 0; border: none; border-top: 1px solid #e5e7eb;">
+                                 <small style="font-size: 10px; color: #999;">
+                                   Lat: ${lat.toFixed(6)}<br>
+                                   Lng: ${lng.toFixed(6)}<br>
+                                   Akurasi: ±${document.getElementById('accuracyInfo').textContent}
+                                 </small>
+                               </div>`);
+                    }
                 } else {
                     document.getElementById('addressInfo').textContent = 'Alamat tidak ditemukan';
                     window.currentLocationName = 'Lokasi tidak diketahui';
