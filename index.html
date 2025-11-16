@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -726,6 +727,39 @@
         button, input, select, textarea {
             touch-action: manipulation;
         }
+
+        /* Leaflet Tooltip Styling */
+        .location-tooltip {
+            background: rgba(0, 184, 148, 0.95) !important;
+            border: 2px solid white !important;
+            border-radius: 8px !important;
+            padding: 6px 12px !important;
+            font-weight: 700 !important;
+            font-size: 13px !important;
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+            white-space: nowrap !important;
+        }
+
+        .location-tooltip::before {
+            border-top-color: white !important;
+        }
+
+        .leaflet-tooltip-top::before {
+            border-top-color: white !important;
+        }
+
+        .leaflet-tooltip-bottom::before {
+            border-bottom-color: white !important;
+        }
+
+        .leaflet-tooltip-left::before {
+            border-left-color: white !important;
+        }
+
+        .leaflet-tooltip-right::before {
+            border-right-color: white !important;
+        }
     </style>
 </head>
 <body>
@@ -1210,30 +1244,35 @@
                 map.removeLayer(userMarker);
             }
 
-            // Get address first, then create marker with location name
-            getAddressFromCoordinates(userLocation[0], userLocation[1]).then(() => {
-                const locationName = window.currentLocationName || 'Lokasi Anda';
-                const locationAddress = window.currentFullAddress || `${userLocation[0].toFixed(6)}, ${userLocation[1].toFixed(6)}`;
-                
-                userMarker = L.marker(userLocation, { icon: userIcon })
-                    .addTo(map)
-                    .bindPopup(`<div style="text-align: center; padding: 12px; min-width: 200px;">
-                                 <strong style="font-size: 14px; color: #00b894;">📍 ${locationName}</strong><br>
-                                 <small style="font-size: 11px; color: #666; line-height: 1.4;">${locationAddress}</small><br>
-                                 <hr style="margin: 8px 0; border: none; border-top: 1px solid #e5e7eb;">
-                                 <small style="font-size: 10px; color: #999;">
-                                   Lat: ${userLocation[0].toFixed(6)}<br>
-                                   Lng: ${userLocation[1].toFixed(6)}<br>
-                                   Akurasi: ±${accuracy.toFixed(0)}m
-                                 </small>
-                               </div>`, {
-                        maxWidth: 300,
-                        className: 'custom-popup'
-                    });
-            });
+            // Create marker first with temporary tooltip
+            userMarker = L.marker(userLocation, { icon: userIcon })
+                .addTo(map)
+                .bindTooltip('Memuat lokasi...', {
+                    permanent: true,
+                    direction: 'top',
+                    offset: [0, -25],
+                    className: 'location-tooltip'
+                })
+                .bindPopup(`<div style="text-align: center; padding: 12px; min-width: 200px;">
+                             <strong style="font-size: 14px; color: #00b894;">📍 Lokasi Anda</strong><br>
+                             <small style="font-size: 11px; color: #666; line-height: 1.4;">Mendeteksi alamat...</small><br>
+                             <hr style="margin: 8px 0; border: none; border-top: 1px solid #e5e7eb;">
+                             <small style="font-size: 10px; color: #999;">
+                               Lat: ${userLocation[0].toFixed(6)}<br>
+                               Lng: ${userLocation[1].toFixed(6)}<br>
+                               Akurasi: ±${accuracy.toFixed(0)}m
+                             </small>
+                           </div>`, {
+                    maxWidth: 300,
+                    className: 'custom-popup'
+                });
 
             map.setView(userLocation, 16);
             updateLocationInfo(position);
+            
+            // Get address and update tooltip
+            getAddressFromCoordinates(userLocation[0], userLocation[1]);
+            
             document.getElementById('mapLoading').style.display = 'none';
         }
 
@@ -1302,8 +1341,12 @@
                     window.currentLocationName = locationName || fullAddress.split(',')[0];
                     window.currentFullAddress = fullAddress;
                     
-                    // Update marker popup if it exists
+                    // Update marker tooltip with location name (PERMANENT LABEL)
                     if (userMarker) {
+                        const tooltipText = window.currentLocationName || 'Lokasi Anda';
+                        userMarker.setTooltipContent(`📍 ${tooltipText}`);
+                        
+                        // Update popup
                         const locationAddress = fullAddress || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
                         userMarker.setPopupContent(`<div style="text-align: center; padding: 12px; min-width: 200px;">
                                  <strong style="font-size: 14px; color: #00b894;">📍 ${window.currentLocationName}</strong><br>
@@ -1320,12 +1363,20 @@
                     document.getElementById('addressInfo').textContent = 'Alamat tidak ditemukan';
                     window.currentLocationName = 'Lokasi tidak diketahui';
                     window.currentFullAddress = 'Alamat tidak tersedia';
+                    
+                    if (userMarker) {
+                        userMarker.setTooltipContent('📍 Lokasi tidak diketahui');
+                    }
                 }
             } catch (error) {
                 console.error('Error getting address:', error);
                 document.getElementById('addressInfo').textContent = 'Gagal mendapatkan alamat';
                 window.currentLocationName = 'Lokasi tidak diketahui';
                 window.currentFullAddress = 'Alamat tidak tersedia';
+                
+                if (userMarker) {
+                    userMarker.setTooltipContent('📍 Lokasi tidak diketahui');
+                }
             }
         }
 
